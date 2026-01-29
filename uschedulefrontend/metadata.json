@@ -1,0 +1,5 @@
+{
+  "name": "USchedule",
+  "description": "A high-performance university scheduling system for academic program heads, featuring a dependent filtering flow, section-based course management, and a drag-and-drop timetable interface.",
+  "requestFramePermissions": []
+}
