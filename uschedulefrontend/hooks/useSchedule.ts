@@ -202,7 +202,7 @@ export const useSchedule = () => {
     }
   }, [courseOfferings, instructors, qualifiedInstructors, handleStaffInstructorToSection]);
 
-  const handleDragStart = useCallback((e: React.DragEvent, payload: { courseId: string; hourType: HourType; instructorId: string; labAssistantId?: string }) => {
+  const handleDragStart = useCallback((e: React.DragEvent, payload: { courseId?: string; assignmentId?: string; hourType: HourType; instructorId: string; labAssistantId?: string; isMove?: boolean }) => {
     e.dataTransfer.setData('hourScheduleData', JSON.stringify(payload));
     e.dataTransfer.effectAllowed = 'move';
   }, []);
@@ -215,6 +215,32 @@ export const useSchedule = () => {
       data = JSON.parse(rawData);
     } catch (e) { return; }
 
+    // Handle moving existing assignment
+    if (data.isMove && data.assignmentId) {
+      const existingAssignment = assignments.find(a => a.id === data.assignmentId);
+      if (!existingAssignment) return;
+
+      // Check if dropping on the same slot (no-op)
+      if (existingAssignment.day === day && existingAssignment.startTime === time) {
+        return;
+      }
+
+      // Check if target slot is occupied
+      if (assignments.some(a => a.day === day && a.startTime === time && a.id !== data.assignmentId)) {
+        alert("This slot is already occupied.");
+        return;
+      }
+
+      // Update assignment to new location
+      setAssignments(prev => prev.map(a => 
+        a.id === data.assignmentId 
+          ? { ...a, day, startTime: time }
+          : a
+      ));
+      return;
+    }
+
+    // Handle new assignment (original logic)
     const { courseId, hourType, instructorId, labAssistantId } = data;
 
     if (!instructorId) {

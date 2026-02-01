@@ -7,6 +7,7 @@ interface TimetableGridProps {
   courseOfferings: CourseOffering[];
   onDrop: (day: string, time: string, payload: string) => void;
   onRemove: (assignmentId: string) => void;
+  onDragStart?: (e: React.DragEvent, payload: any) => void;
   isHead?: boolean;
   admissionType?: string;
 }
@@ -15,7 +16,8 @@ const TimetableGrid: React.FC<TimetableGridProps> = ({
   assignments, 
   courseOfferings, 
   onDrop, 
-  onRemove, 
+  onRemove,
+  onDragStart,
   isHead = false,
   admissionType = 'Regular'
 }) => {
@@ -28,6 +30,24 @@ const TimetableGrid: React.FC<TimetableGridProps> = ({
     e.preventDefault();
     const payload = e.dataTransfer.getData('hourScheduleData');
     if (payload) onDrop(day, time, payload);
+  };
+
+  const handleAssignmentDragStart = (e: React.DragEvent, assignment: Assignment) => {
+    if (!isHead || !onDragStart) return;
+    e.stopPropagation();
+    const payload = {
+      assignmentId: assignment.id,
+      courseId: assignment.courseOfferingId,
+      hourType: assignment.hourType,
+      instructorId: assignment.instructorId,
+      labAssistantId: assignment.labAssistantId,
+      isMove: true // Flag to indicate this is a move operation
+    };
+    // Set data transfer directly for immediate use
+    e.dataTransfer.setData('hourScheduleData', JSON.stringify(payload));
+    e.dataTransfer.effectAllowed = 'move';
+    // Also call the handler if provided (for consistency)
+    onDragStart(e, payload);
   };
 
   const getAssignmentAt = (day: string, time: string) => assignments.find(a => a.day === day && a.startTime === time);
@@ -94,7 +114,11 @@ const TimetableGrid: React.FC<TimetableGridProps> = ({
                       className={`min-h-[140px] p-3 border-r last:border-r-0 border-b border-slate-100 transition-colors group relative ${isHead ? 'hover:bg-slate-50/80' : ''}`}
                     >
                       {assignment && course ? (
-                        <div className={`h-full p-3 rounded-[18px] bg-white border border-slate-200 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.08)] flex flex-col justify-between transition-all ${isHead ? 'group-hover:shadow-[0_4px_15px_-4px_rgba(2,136,209,0.2)] group-hover:border-brand-200' : ''}`}>
+                        <div 
+                          draggable={isHead}
+                          onDragStart={(e) => handleAssignmentDragStart(e, assignment)}
+                          className={`h-full p-3 rounded-[18px] bg-white border border-slate-200 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.08)] flex flex-col justify-between transition-all ${isHead ? 'cursor-grab active:cursor-grabbing group-hover:shadow-[0_4px_15px_-4px_rgba(2,136,209,0.2)] group-hover:border-brand-200 hover:scale-[1.02] hover:border-brand-300' : ''}`}
+                        >
                           <div className="flex flex-col gap-1.5">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2 min-w-0">

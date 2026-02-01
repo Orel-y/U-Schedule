@@ -138,7 +138,8 @@ const App: React.FC = () => {
                   assignments={schedule.assignments} 
                   courseOfferings={schedule.courseOfferings} 
                   onDrop={schedule.handleDrop} 
-                  onRemove={schedule.handleRemoveAssignment} 
+                  onRemove={schedule.handleRemoveAssignment}
+                  onDragStart={schedule.handleDragStart}
                   isHead={auth.isHead}
                   admissionType={schedule.selectedAdmissionType}
                 />
