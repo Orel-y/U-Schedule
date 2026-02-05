@@ -67,7 +67,11 @@ export interface CourseOffering {
   courseCode: string;
   courseTitle: string;
   creditHours: number;
-  
+
+  // Course ownership - which program manages instructors for this course
+  owningProgramId: string;
+  owningProgramCode?: string;
+
   // Base requirements from curriculum
   lectureHours: number;
   labHours: number;
@@ -111,6 +115,47 @@ export interface HomebaseAssignment {
   floor: number;
 }
 
+// Cross-Program Scheduling Types
+export type DraftScheduleStatus = 'draft' | 'pending_external' | 'finalized';
+export type ShareRequestStatus = 'pending' | 'in_progress' | 'completed';
+
+export interface DraftSchedule {
+  id: string;
+  termId: string;
+  batchId: string;
+  sectionId: string;
+  createdBy: string;
+  createdByProgramId: string;
+  status: DraftScheduleStatus;
+  courses: CourseOffering[];
+  assignments: Assignment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ScheduleShareRequest {
+  id: string;
+  draftScheduleId: string;
+  sourceProgramId: string;
+  sourceProgramName: string;
+  targetProgramId: string;
+  targetProgramName: string;
+  courseOfferingIds: string[];
+  courses: CourseOffering[];
+  status: ShareRequestStatus;
+  createdAt: string;
+  requestedDay?: string;
+  requestedTime?: string;
+  assignedInstructorId?: string;
+  assignedInstructorName?: string;
+}
+
+export interface UserProgramScope {
+  programId: string;
+  programCode: string;
+  role: 'owner' | 'viewer';
+}
+
 export enum Days {
   MONDAY = 'Monday',
   TUESDAY = 'Tuesday',
@@ -122,6 +167,6 @@ export enum Days {
 }
 
 export const TIME_SLOTS = [
-  '08:00', '09:00', '10:00', '11:00', '12:00', 
+  '08:00', '09:00', '10:00', '11:00', '12:00',
   '13:00', '14:00', '15:00', '16:00', '17:00'
 ];

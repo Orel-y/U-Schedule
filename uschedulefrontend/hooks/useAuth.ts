@@ -3,9 +3,10 @@ import { useState, useEffect, useCallback } from 'react';
 // Corrected import path to reference types/index.ts which contains User and AuthResponse
 import { User, AuthResponse } from '../types/index';
 import * as api from '../lib/api';
+import { ExtendedUser } from '../lib/api';
 
 export const useAuth = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<ExtendedUser | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +17,7 @@ export const useAuth = () => {
     try {
       const response = await api.login(username, password);
       setToken(response.access_token);
-      setUser(response.user);
+      setUser(response.user as ExtendedUser);
       localStorage.setItem('auth_token', response.access_token);
       localStorage.setItem('user_data', JSON.stringify(response.user));
       return true;
@@ -53,6 +54,9 @@ export const useAuth = () => {
     login,
     logout,
     isAuthenticated: !!token,
-    isHead: user?.role === 'HEAD'
+    isHead: user?.role === 'HEAD',
+    // Cross-program support
+    userProgramId: user?.programId,
+    userProgramCode: user?.programCode,
   };
 };

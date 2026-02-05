@@ -1,7 +1,8 @@
 
-import { 
-  AcademicProgram, Section, CourseOffering, Room, 
-  HomebaseAssignment, AuthResponse, User, Batch, Instructor, LabAssistant 
+import {
+  AcademicProgram, Section, CourseOffering, Room,
+  HomebaseAssignment, AuthResponse, User, Batch, Instructor, LabAssistant,
+  DraftSchedule, ScheduleShareRequest
 } from '../types/index';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -22,13 +23,25 @@ const MOCK_BATCH_RECORDS: Batch[] = [
   { id: 'b-2021-cert-weekend', entry_year: 2021, academic_program_id: 'prog-4', program: 'Certificate', admission_type: 'Weekend', batch_type: 'Normal', is_active: true },
 ];
 
+// Extended User interface for cross-program support
+export interface ExtendedUser extends User {
+  programId?: string;
+  programCode?: string;
+}
+
 export const login = async (username: string, password: string): Promise<AuthResponse> => {
   await delay(800);
   if (username === "head_admin" && password === "password") {
     return {
       access_token: "mock_jwt_head_token",
       token_type: "bearer",
-      user: { id: "u-1", username: "head_admin", fullName: "Dr. Zerihun Kinfe", role: "HEAD" }
+      user: { id: "u-1", username: "head_admin", fullName: "Dr. Zerihun Kinfe", role: "HEAD", programId: "prog-1", programCode: "SE" } as ExtendedUser
+    };
+  } else if (username === "cs_admin" && password === "password") {
+    return {
+      access_token: "mock_jwt_cs_token",
+      token_type: "bearer",
+      user: { id: "u-3", username: "cs_admin", fullName: "Dr. Computer Science Head", role: "HEAD", programId: "prog-2", programCode: "CS" } as ExtendedUser
     };
   } else if (username === "viewer_user" && password === "password") {
     return {
@@ -58,11 +71,20 @@ export const INSTRUCTORS: Instructor[] = [
   { id: 't-2', name: 'Prof. Martha', remainingLoad: 21 },
   { id: 't-3', name: 'Dr. Solomon', remainingLoad: 12 },
   { id: 't-4', name: 'Dr. Kebede', remainingLoad: 15 },
+  // CS Program instructors
+  { id: 't-5', name: 'Dr. Tesfaye (CS)', remainingLoad: 16 },
+  { id: 't-6', name: 'Prof. Alemayehu (CS)', remainingLoad: 20 },
 ];
+
+// Map instructors to their owning programs
+export const INSTRUCTOR_PROGRAMS: Record<string, string> = {
+  't-1': 'prog-1', 't-2': 'prog-1', 't-3': 'prog-1', 't-4': 'prog-1',
+  't-5': 'prog-2', 't-6': 'prog-2',
+};
 
 export const QUALIFIED_INSTRUCTORS: Record<string, string[]> = {
   'SE101': ['t-1', 't-4'],
-  'MATH101': ['t-2', 't-3'],
+  'MATH101': ['t-5', 't-6'],  // Owned by CS program
   'SE201': ['t-4', 't-1'],
 };
 
@@ -87,43 +109,46 @@ const ROOMS: Room[] = [
 
 const COURSE_OFFERINGS_BY_FILTER: Record<string, CourseOffering[]> = {
   'b-2023-degree-regular-prog-1-1-1': [
-    { 
-      id: 'co-1', courseCode: 'SE101', courseTitle: 'Intro to SE', creditHours: 3, 
+    {
+      id: 'co-1', courseCode: 'SE101', courseTitle: 'Intro to SE', creditHours: 3,
+      owningProgramId: 'prog-1', owningProgramCode: 'SE',  // Owned by SE
       lectureHours: 3, labHours: 2, tutorialHours: 1, fieldHours: 0,
       remainingLecture: 3, remainingLab: 2, remainingTutorial: 1, remainingField: 0,
-      instructorId: '', instructorName: '', color: 'bg-blue-500' 
+      instructorId: '', instructorName: '', color: 'bg-blue-500'
     },
-    { 
-      id: 'co-2', courseCode: 'MATH101', courseTitle: 'Calculus I', creditHours: 4, 
+    {
+      id: 'co-2', courseCode: 'MATH101', courseTitle: 'Calculus I', creditHours: 4,
+      owningProgramId: 'prog-2', owningProgramCode: 'CS',  // Owned by CS - external course!
       lectureHours: 4, labHours: 0, tutorialHours: 2, fieldHours: 0,
       remainingLecture: 4, remainingLab: 0, remainingTutorial: 2, remainingField: 0,
-      instructorId: '', instructorName: '', color: 'bg-emerald-500' 
+      instructorId: '', instructorName: '', color: 'bg-emerald-500'
     },
   ],
   'b-2022-degree-regular-prog-1-2-1': [
-    { 
-      id: 'co-4', courseCode: 'SE201', courseTitle: 'Data Structures', creditHours: 4, 
+    {
+      id: 'co-4', courseCode: 'SE201', courseTitle: 'Data Structures', creditHours: 4,
+      owningProgramId: 'prog-1', owningProgramCode: 'SE',  // Owned by SE
       lectureHours: 3, labHours: 3, tutorialHours: 0, fieldHours: 0,
       remainingLecture: 3, remainingLab: 3, remainingTutorial: 0, remainingField: 0,
-      instructorId: '', instructorName: '', color: 'bg-orange-500' 
+      instructorId: '', instructorName: '', color: 'bg-orange-500'
     },
   ]
 };
 
 let homebaseAssignments: { sectionId: string; roomId: string }[] = [];
 
-export const fetchBatches = async () => { 
-  await delay(300); 
-  return DEV_MOCKS ? MOCK_BATCH_RECORDS : BATCHES; 
+export const fetchBatches = async () => {
+  await delay(300);
+  return DEV_MOCKS ? MOCK_BATCH_RECORDS : BATCHES;
 };
 
 export const fetchAcademicPrograms = async () => { await delay(400); return ACADEMIC_PROGRAMS; };
 export const fetchInstructors = async () => { await delay(200); return INSTRUCTORS; };
 export const fetchLabAssistants = async () => { await delay(200); return LAB_ASSISTANTS; };
 export const fetchYearLevels = async (programId: string) => { await delay(200); return [1, 2, 3, 4, 5]; };
-export const fetchSections = async (programId: string, year: number) => { 
-  await delay(300); 
-  return SECTIONS.filter(s => s.academicProgramId === programId && s.yearLevel === year); 
+export const fetchSections = async (programId: string, year: number) => {
+  await delay(300);
+  return SECTIONS.filter(s => s.academicProgramId === programId && s.yearLevel === year);
 };
 export const fetchCourseOfferings = async (batchId: string, programId: string, year: number, term: string) => {
   await delay(400);
@@ -170,3 +195,157 @@ export const fetchHomebaseAssignments = async (): Promise<HomebaseAssignment[]> 
 };
 
 export const resetClassAssignment = async () => { await delay(500); homebaseAssignments = []; return { success: true }; };
+
+// ============================================
+// Cross-Program Scheduling API Functions
+// ============================================
+
+// In-memory store for draft schedules and share requests
+let draftSchedules: DraftSchedule[] = [];
+let shareRequests: ScheduleShareRequest[] = [];
+
+export const createDraftSchedule = async (
+  termId: string,
+  batchId: string,
+  sectionId: string,
+  createdBy: string,
+  createdByProgramId: string,
+  courses: CourseOffering[]
+): Promise<DraftSchedule> => {
+  await delay(300);
+  const draft: DraftSchedule = {
+    id: `draft-${Date.now()}`,
+    termId,
+    batchId,
+    sectionId,
+    createdBy,
+    createdByProgramId,
+    status: 'draft',
+    courses,
+    assignments: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  draftSchedules.push(draft);
+  return draft;
+};
+
+export const saveDraftSchedule = async (draft: DraftSchedule): Promise<DraftSchedule> => {
+  await delay(200);
+  const index = draftSchedules.findIndex(d => d.id === draft.id);
+  if (index !== -1) {
+    draftSchedules[index] = { ...draft, updatedAt: new Date().toISOString() };
+    return draftSchedules[index];
+  }
+  throw new Error('Draft not found');
+};
+
+export const fetchDraftScheduleById = async (draftId: string): Promise<DraftSchedule | null> => {
+  await delay(200);
+  return draftSchedules.find(d => d.id === draftId) || null;
+};
+
+export const shareScheduleWithProgram = async (
+  draftScheduleId: string,
+  courseOfferingIds: string[],
+  targetProgramId: string,
+  sourceProgramId: string,
+  requestedDay?: string,
+  requestedTime?: string
+): Promise<ScheduleShareRequest> => {
+  await delay(400);
+
+  const draft = draftSchedules.find(d => d.id === draftScheduleId);
+  if (!draft) throw new Error('Draft not found');
+
+  const targetProgram = ACADEMIC_PROGRAMS.find(p => p.id === targetProgramId);
+  const sourceProgram = ACADEMIC_PROGRAMS.find(p => p.id === sourceProgramId);
+  if (!targetProgram || !sourceProgram) throw new Error('Program not found');
+
+  const sharedCourses = draft.courses.filter(c => courseOfferingIds.includes(c.id));
+
+  const request: ScheduleShareRequest = {
+    id: `share-${Date.now()}`,
+    draftScheduleId,
+    sourceProgramId,
+    sourceProgramName: sourceProgram.name,
+    targetProgramId,
+    targetProgramName: targetProgram.name,
+    courseOfferingIds,
+    courses: sharedCourses,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+    requestedDay,
+    requestedTime,
+  };
+
+  shareRequests.push(request);
+
+  // Update draft status
+  draft.status = 'pending_external';
+
+  return request;
+};
+
+export const fetchPendingShareRequests = async (programId: string): Promise<ScheduleShareRequest[]> => {
+  await delay(300);
+  return shareRequests.filter(r => r.targetProgramId === programId && r.status !== 'completed');
+};
+
+export const fetchOutgoingShareRequests = async (programId: string): Promise<ScheduleShareRequest[]> => {
+  await delay(300);
+  return shareRequests.filter(r => r.sourceProgramId === programId);
+};
+
+export const acceptShareRequest = async (requestId: string): Promise<ScheduleShareRequest> => {
+  await delay(200);
+  const request = shareRequests.find(r => r.id === requestId);
+  if (!request) throw new Error('Request not found');
+  request.status = 'in_progress';
+  return request;
+};
+
+export const submitExternalAssignment = async (
+  requestId: string,
+  instructorId: string,
+  instructorName: string
+): Promise<ScheduleShareRequest> => {
+  await delay(400);
+  const request = shareRequests.find(r => r.id === requestId);
+  if (!request) throw new Error('Request not found');
+
+  request.assignedInstructorId = instructorId;
+  request.assignedInstructorName = instructorName;
+  request.status = 'completed';
+
+  // Update the draft with the assigned instructor
+  const draft = draftSchedules.find(d => d.id === request.draftScheduleId);
+  if (draft) {
+    draft.courses = draft.courses.map(c => {
+      if (request.courseOfferingIds.includes(c.id)) {
+        return { ...c, instructorId, instructorName, isAssigned: true };
+      }
+      return c;
+    });
+
+    // Check if all external courses are now assigned
+    const allExternalCompleted = shareRequests
+      .filter(r => r.draftScheduleId === draft.id)
+      .every(r => r.status === 'completed');
+
+    if (allExternalCompleted) {
+      draft.status = 'draft'; // Ready for finalization
+    }
+  }
+
+  return request;
+};
+
+export const fetchInstructorsByProgram = async (programId: string): Promise<Instructor[]> => {
+  await delay(200);
+  return INSTRUCTORS.filter(i => INSTRUCTOR_PROGRAMS[i.id] === programId);
+};
+
+export const getAcademicProgramById = (programId: string): AcademicProgram | undefined => {
+  return ACADEMIC_PROGRAMS.find(p => p.id === programId);
+};
