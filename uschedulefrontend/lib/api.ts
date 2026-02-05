@@ -312,7 +312,8 @@ export const acceptShareRequest = async (requestId: string): Promise<ScheduleSha
 export const submitExternalAssignment = async (
   requestId: string,
   instructorId: string,
-  instructorName: string
+  instructorName: string,
+  assignments?: Assignment[]
 ): Promise<ScheduleShareRequest> => {
   await delay(400);
   const request = shareRequests.find(r => r.id === requestId);
@@ -321,6 +322,9 @@ export const submitExternalAssignment = async (
   request.assignedInstructorId = instructorId;
   request.assignedInstructorName = instructorName;
   request.status = 'completed';
+  if (assignments) {
+    request.draftAssignments = assignments;
+  }
 
   // Update the draft with the assigned instructor
   const draft = draftSchedules.find(d => d.id === request.draftScheduleId);

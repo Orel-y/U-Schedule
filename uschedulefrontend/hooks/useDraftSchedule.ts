@@ -173,6 +173,17 @@ export const useDraftSchedule = ({
         }
     }, [draft, createDraft, userProgramId, fetchOutgoingRequests]);
 
+    // Merge local assignments with completed external assignments
+    const mergedAssignments = useMemo(() => {
+        const externalAssignments = outgoingShares
+            .filter(r => r.status === 'completed')
+            .flatMap(r => r.draftAssignments || []);
+
+        // Filter out any duplicates if they exist, prioritising local ones for now
+        // though logic should ideally be cleaner (e.g. by hourType/day/time)
+        return [...assignments, ...externalAssignments];
+    }, [assignments, outgoingShares]);
+
     // Accept an incoming share request
     const acceptRequest = useCallback(async (requestId: string) => {
         try {
@@ -191,10 +202,16 @@ export const useDraftSchedule = ({
     const submitAssignment = useCallback(async (
         requestId: string,
         instructorId: string,
-        instructorName: string
+        instructorName: string,
+        externalAssignments?: Assignment[]
     ) => {
         try {
-            const updated = await api.submitExternalAssignment(requestId, instructorId, instructorName);
+            const updated = await api.submitExternalAssignment(
+                requestId,
+                instructorId,
+                instructorName,
+                externalAssignments
+            );
 
             // Remove from pending and update lists
             setPendingShares(prev => prev.filter(r => r.id !== requestId));
@@ -225,6 +242,7 @@ export const useDraftSchedule = ({
         externalCourses,
         externalCoursesByProgram,
         hasExternalCourses: externalCourses.length > 0,
+        mergedAssignments,
 
         // Actions
         canEditCourse,

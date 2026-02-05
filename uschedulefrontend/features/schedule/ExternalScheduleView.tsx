@@ -23,6 +23,7 @@ const ExternalScheduleView: React.FC<ExternalScheduleViewProps> = ({
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [localAssignments, setLocalAssignments] = useState<Assignment[]>([]);
+    const [localOfferings, setLocalOfferings] = useState<CourseOffering[]>(request.courses || []);
 
     // Unified assignments (sender's draft + local assignments)
     const combinedAssignments = useMemo(() => {
@@ -31,8 +32,8 @@ const ExternalScheduleView: React.FC<ExternalScheduleViewProps> = ({
 
     // Unified course offerings (sender's courses + possibly local ones)
     const combinedOfferings = useMemo(() => {
-        return request.allDraftCourses || request.courses || [];
-    }, [request.allDraftCourses, request.courses]);
+        return request.allDraftCourses || localOfferings || [];
+    }, [request.allDraftCourses, localOfferings]);
 
     // Check if any course has scheduling data
     const hasSchedulingData = localAssignments.length > 0;
@@ -65,25 +66,54 @@ const ExternalScheduleView: React.FC<ExternalScheduleViewProps> = ({
                 id: `ext-assign-${Date.now()}`,
                 courseOfferingId: payload.courseId,
                 instructorId: selectedInstructorId,
-                sectionId: request.draftScheduleId, // Use draft ID as section reference
+                sectionId: request.draftScheduleId,
                 day,
                 startTime: time,
-                endTime: time, // Same for now, as we don't calculate duration here
+                endTime: time,
                 hourType: payload.hourType,
                 labAssistantId: payload.labAssistantId
             };
+
+            // Update local offerings to reduce hours
+            setLocalOfferings(prev => prev.map(c => {
+                if (c.id === payload.courseId) {
+                    const updates = { ...c };
+                    if (payload.hourType === 'lecture') updates.remainingLecture = Math.max(0, (c.remainingLecture || 0) - 1);
+                    if (payload.hourType === 'lab') updates.remainingLab = Math.max(0, (c.remainingLab || 0) - 1);
+                    if (payload.hourType === 'tutorial') updates.remainingTutorial = Math.max(0, (c.remainingTutorial || 0) - 1);
+
+                    // Also attach instructor info so it shows on the grid card
+                    updates.instructorId = selectedInstructorId;
+                    updates.instructorName = selectedInstructor?.name || '';
+                    return updates;
+                }
+                return c;
+            }));
 
             // Add to local assignments
             setLocalAssignments(prev => [...prev, newAssignment]);
         } catch (error) {
             console.error('Failed to parse drop payload:', error);
         }
-    }, [selectedInstructorId]);
+    }, [selectedInstructorId, selectedInstructor]);
 
     // Handle removing an assignment
     const handleRemove = useCallback((assignmentId: string) => {
+        const assignmentToRemove = localAssignments.find(a => a.id === assignmentId);
+        if (assignmentToRemove) {
+            setLocalOfferings(prev => prev.map(c => {
+                if (c.id === assignmentToRemove.courseOfferingId) {
+                    const updates = { ...c };
+                    if (assignmentToRemove.hourType === 'lecture') updates.remainingLecture = (c.remainingLecture || 0) + 1;
+                    if (assignmentToRemove.hourType === 'lab') updates.remainingLab = (c.remainingLab || 0) + 1;
+                    if (assignmentToRemove.hourType === 'tutorial') updates.remainingTutorial = (c.remainingTutorial || 0) + 1;
+                    return updates;
+                }
+                return c;
+            }));
+        }
         setLocalAssignments(prev => prev.filter(a => a.id !== assignmentId));
-    }, []);
+    }, [localAssignments]);
 
     // Handle drag start for course cards
     const handleDragStart = useCallback((e: React.DragEvent, payload: any) => {
@@ -205,7 +235,7 @@ const ExternalScheduleView: React.FC<ExternalScheduleViewProps> = ({
 
                         {selectedInstructorId ? (
                             <div className="space-y-3">
-                                {(request.courses || []).map(course => (
+                                {localOfferings.map(course => (
                                     <CourseCard
                                         key={course.id}
                                         course={{ ...course, instructorId: selectedInstructorId }}

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSchedule } from './hooks/useSchedule';
 import { useAuth } from './hooks/useAuth';
 import { useDraftSchedule } from './hooks/useDraftSchedule';
@@ -28,6 +28,31 @@ const App: React.FC = () => {
     courseOfferings: schedule.courseOfferings,
     assignments: schedule.assignments,
   });
+
+  const [lastCompletedShares, setLastCompletedShares] = useState<string[]>([]);
+  const [sessionToast, setSessionToast] = useState<{ message: string; type: 'info' | 'error' | 'success' } | null>(null);
+
+  // Poll for outgoing request completions and notify
+  useEffect(() => {
+    const completed = draftSchedule.outgoingShares
+      .filter(r => r.status === 'completed')
+      .map(r => r.id);
+
+    const newlyCompleted = completed.filter(id => !lastCompletedShares.includes(id));
+
+    if (newlyCompleted.length > 0) {
+      newlyCompleted.forEach(id => {
+        const req = draftSchedule.outgoingShares.find(r => r.id === id);
+        if (req) {
+          setSessionToast({
+            message: `${req.targetProgramName} has completed your instructor request!`,
+            type: 'success'
+          });
+        }
+      });
+      setLastCompletedShares(completed);
+    }
+  }, [draftSchedule.outgoingShares, lastCompletedShares]);
 
   if (auth.isLoading) {
     return (
@@ -161,7 +186,7 @@ const App: React.FC = () => {
 
               <div className="min-w-0">
                 <TimetableGrid
-                  assignments={schedule.assignments}
+                  assignments={draftSchedule.mergedAssignments}
                   courseOfferings={schedule.courseOfferings}
                   onDrop={schedule.handleDrop}
                   onRemove={schedule.handleRemoveAssignment}
@@ -175,15 +200,13 @@ const App: React.FC = () => {
             </div>
           </>
         ) : activeTab === 'pending-requests' ? (
-          <div className="max-w-4xl mx-auto">
-            <PendingSharesPanel
-              pendingRequests={draftSchedule.pendingShares}
-              userProgramId={auth.userProgramId || ''}
-              onAccept={draftSchedule.acceptRequest}
-              onSubmitAssignment={draftSchedule.submitAssignment}
-              onRefresh={draftSchedule.refetchPendingRequests}
-            />
-          </div>
+          <PendingSharesPanel
+            pendingRequests={draftSchedule.pendingShares}
+            userProgramId={auth.userProgramId || ''}
+            onAccept={draftSchedule.acceptRequest}
+            onSubmitAssignment={draftSchedule.submitAssignment}
+            onRefresh={draftSchedule.refetchPendingRequests}
+          />
         ) : (
           <ClassAssignmentTab isHead={auth.isHead} />
         )}
@@ -205,6 +228,28 @@ const App: React.FC = () => {
         sectionName={schedule.selectedSectionData?.name}
         programName={auth.userProgramCode}
       />
+
+      {sessionToast && (
+        <div className="fixed bottom-10 right-10 z-[100] animate-in slide-in-from-right-10">
+          <div className={`px-6 py-4 rounded-2xl shadow-2xl border flex items-center gap-3 ${sessionToast.type === 'success' ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-slate-800 border-slate-700 text-white'
+            }`}>
+            {sessionToast.type === 'success' && (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+            <p className="font-bold text-sm">{sessionToast.message}</p>
+            <button
+              onClick={() => setSessionToast(null)}
+              className="ml-4 hover:opacity-70"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
