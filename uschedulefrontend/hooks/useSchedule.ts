@@ -1,73 +1,101 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import * as api from '../lib/api';
-import { AcademicProgram, Section, CourseOffering, Assignment, Batch, Instructor, LabAssistant, HourType } from '../types/index';
+import { AcademicProgram, Section, CourseOffering, Assignment, Batch, Instructor, LabAssistant, HourType, Campus } from '../types/index';
 
 export const useSchedule = () => {
-  // New split Batch selection states
+  // Filter states
+  const [selectedCampus, setSelectedCampus] = useState("");
   const [selectedProgramType, setSelectedProgramType] = useState("");
   const [selectedAdmissionType, setSelectedAdmissionType] = useState("");
   const [selectedEntryYear, setSelectedEntryYear] = useState("");
 
   const [selectedProgram, setSelectedProgram] = useState("");
-  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
-  const [selectedTerm, setSelectedTerm] = useState("");
-  const [searchQuery, setSearchQuery] = useState(""); // NEW: Search query state
+  const [searchQuery, setSearchQuery] = useState("");
   const [showAssignmentPrompt, setShowAssignmentPrompt] = useState(false);
-  
+
+  const [campuses, setCampuses] = useState<Campus[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [academicPrograms, setAcademicPrograms] = useState<AcademicProgram[]>([]);
   const [instructors, setInstructors] = useState<Instructor[]>([]);
   const [labAssistants, setLabAssistants] = useState<LabAssistant[]>([]);
-  const [yearLevels, setYearLevels] = useState<number[]>([]);
+  const [academicYears, setAcademicYears] = useState<{ value: string; label: string }[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [courseOfferings, setCourseOfferings] = useState<CourseOffering[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  
+
   const [qualifiedInstructors, setQualifiedInstructors] = useState<Record<string, string[]>>(api.QUALIFIED_INSTRUCTORS);
   const [sectionStaffIds, setSectionStaffIds] = useState<string[]>([]);
 
-  const [isLoading, setIsLoading] = useState({ 
+  const [isLoading, setIsLoading] = useState({
+    campuses: false,
     batches: false,
-    programs: false, 
-    years: false, 
-    sections: false, 
+    programs: false,
+    academicYears: false,
+    sections: false,
     offerings: false,
     personnel: false
   });
 
   useEffect(() => {
-    setIsLoading(p => ({ ...p, batches: true, programs: true, personnel: true }));
+    setIsLoading(p => ({ ...p, campuses: true, batches: true, personnel: true }));
     Promise.all([
+      api.fetchCampuses(),
       api.fetchBatches(),
-      api.fetchAcademicPrograms(),
       api.fetchInstructors(),
       api.fetchLabAssistants()
-    ]).then(([batchesData, programsData, instructorsData, labData]) => {
+    ]).then(([campusesData, batchesData, instructorsData, labData]) => {
+      setCampuses(campusesData);
       setBatches(batchesData);
-      setAcademicPrograms(programsData);
       setInstructors(instructorsData);
       setLabAssistants(labData);
-      setIsLoading(p => ({ ...p, batches: false, programs: false, personnel: false }));
+      setIsLoading(p => ({ ...p, campuses: false, batches: false, personnel: false }));
     });
   }, []);
 
+  // Fetch programs when campus changes
+  useEffect(() => {
+    if (selectedCampus) {
+      setIsLoading(p => ({ ...p, programs: true }));
+      api.fetchAcademicPrograms(selectedCampus).then(data => {
+        setAcademicPrograms(data);
+        setIsLoading(p => ({ ...p, programs: false }));
+      });
+    } else {
+      setAcademicPrograms([]);
+    }
+  }, [selectedCampus]);
+
+  // Fetch academic years when program changes
+  useEffect(() => {
+    if (selectedProgram) {
+      setIsLoading(p => ({ ...p, academicYears: true }));
+      api.fetchAcademicYears(selectedProgram).then(data => {
+        setAcademicYears(data);
+        setIsLoading(p => ({ ...p, academicYears: false }));
+      });
+    } else {
+      setAcademicYears([]);
+    }
+  }, [selectedProgram]);
+
   // Derived: Resolve the specific Batch ID based on all selection criteria
   const resolvedBatchId = useMemo(() => {
-    const match = batches.find(b => 
-      b.program === selectedProgramType && 
-      b.admission_type === selectedAdmissionType && 
+    const match = batches.find(b =>
+      b.program === selectedProgramType &&
+      b.admission_type === selectedAdmissionType &&
       b.entry_year.toString() === selectedEntryYear
     );
     return match ? match.id : "";
   }, [batches, selectedProgramType, selectedAdmissionType, selectedEntryYear]);
 
-  const fetchOfferings = useCallback(async (batchId: string, programId: string, year: string, term: string) => {
-    if (batchId && programId && year && term) {
+  const fetchOfferings = useCallback(async (batchId: string, programId: string, academicYear: string) => {
+    if (batchId && programId && academicYear) {
       setIsLoading(p => ({ ...p, offerings: true }));
       try {
-        const offerings = await api.fetchCourseOfferings(batchId, programId, parseInt(year), term);
+        const offerings = await api.fetchCourseOfferings(batchId, programId, academicYear);
         setCourseOfferings(offerings);
       } finally {
         setIsLoading(p => ({ ...p, offerings: false }));
@@ -75,17 +103,27 @@ export const useSchedule = () => {
     }
   }, []);
 
-  // Handlers for the 3-part Batch filter
+  // Handlers
+  const handleCampusChange = useCallback((id: string) => {
+    setSelectedCampus(id);
+    setSelectedProgram("");
+    setSelectedAcademicYear("");
+    setSelectedSection("");
+    setCourseOfferings([]);
+    setSections([]);
+    setAssignments([]);
+  }, []);
+
   const handleProgramTypeChange = useCallback((type: string) => {
     setSelectedProgramType(type);
-    setSelectedEntryYear(""); // Reset dependent field
+    setSelectedEntryYear("");
     setCourseOfferings([]);
     setAssignments([]);
   }, []);
 
   const handleAdmissionTypeChange = useCallback((type: string) => {
     setSelectedAdmissionType(type);
-    setSelectedEntryYear(""); // Reset dependent field
+    setSelectedEntryYear("");
     setCourseOfferings([]);
     setAssignments([]);
   }, []);
@@ -96,32 +134,31 @@ export const useSchedule = () => {
     setAssignments([]);
   }, []);
 
-  // Effect to trigger offering fetch when identification is complete
+  // Effect to trigger offering fetch
   useEffect(() => {
-    if (resolvedBatchId && selectedProgram && selectedYear && selectedTerm) {
-      fetchOfferings(resolvedBatchId, selectedProgram, selectedYear, selectedTerm);
+    if (resolvedBatchId && selectedProgram && selectedAcademicYear) {
+      fetchOfferings(resolvedBatchId, selectedProgram, selectedAcademicYear);
     }
-  }, [resolvedBatchId, selectedProgram, selectedYear, selectedTerm, fetchOfferings]);
+  }, [resolvedBatchId, selectedProgram, selectedAcademicYear, fetchOfferings]);
 
   const handleProgramChange = useCallback(async (id: string) => {
     setSelectedProgram(id);
-    setSelectedYear(""); setSelectedSection(""); setSelectedTerm("");
-    setCourseOfferings([]); setSections([]); setYearLevels([]); setAssignments([]);
-    if (id) {
-      setIsLoading(p => ({ ...p, years: true }));
-      const years = await api.fetchYearLevels(id);
-      setYearLevels(years);
-      setIsLoading(p => ({ ...p, years: false }));
-    }
+    setSelectedAcademicYear("");
+    setSelectedSection("");
+    setCourseOfferings([]);
+    setSections([]);
+    setAssignments([]);
   }, []);
 
-  const handleYearChange = useCallback(async (y: string) => {
-    setSelectedYear(y);
-    setSelectedSection(""); setSelectedTerm("");
-    setCourseOfferings([]); setSections([]); setAssignments([]);
-    if (y && selectedProgram) {
+  const handleAcademicYearChange = useCallback(async (ay: string) => {
+    setSelectedAcademicYear(ay);
+    setSelectedSection("");
+    setCourseOfferings([]);
+    setSections([]);
+    setAssignments([]);
+    if (ay && selectedProgram) {
       setIsLoading(p => ({ ...p, sections: true }));
-      const secs = await api.fetchSections(selectedProgram, parseInt(y));
+      const secs = await api.fetchSections(selectedProgram, ay);
       setSections(secs);
       setIsLoading(p => ({ ...p, sections: false }));
     }
@@ -130,16 +167,10 @@ export const useSchedule = () => {
   const handleSectionChange = useCallback(async (id: string) => {
     setSelectedSection(id);
     setAssignments([]);
-    setSectionStaffIds([]); 
+    setSectionStaffIds([]);
     if (id) {
       setShowAssignmentPrompt(true);
     }
-  }, []);
-
-  const handleTermChange = useCallback(async (term: string) => {
-    setSelectedTerm(term);
-    setCourseOfferings([]); 
-    setAssignments([]);
   }, []);
 
   const handleStaffInstructorToSection = useCallback((instructorId: string) => {
@@ -165,7 +196,7 @@ export const useSchedule = () => {
     if (instructorId === prevInstructorId && wasAssigned) return;
 
     const newInstructor = instructors.find(i => i.id === instructorId);
-    
+
     if (instructorId && newInstructor) {
       if (newInstructor.remainingLoad < courseLoad) {
         alert(`Insufficient load for ${newInstructor.name}. Required: ${courseLoad}, Available: ${newInstructor.remainingLoad}`);
@@ -175,12 +206,12 @@ export const useSchedule = () => {
 
     setCourseOfferings(prev => prev.map(c => {
       if (c.id === courseId) {
-        return { 
-          ...c, 
-          instructorId, 
-          instructorName: newInstructor?.name || "", 
+        return {
+          ...c,
+          instructorId,
+          instructorName: newInstructor?.name || "",
           labAssistantId,
-          isAssigned: !!instructorId 
+          isAssigned: !!instructorId
         };
       }
       return c;
@@ -208,8 +239,8 @@ export const useSchedule = () => {
   }, []);
 
   const handleDrop = useCallback((day: string, time: string, rawData: string) => {
-    if (!selectedSection) return; 
-    
+    if (!selectedSection) return;
+
     let data;
     try {
       data = JSON.parse(rawData);
@@ -220,27 +251,23 @@ export const useSchedule = () => {
       const existingAssignment = assignments.find(a => a.id === data.assignmentId);
       if (!existingAssignment) return;
 
-      // Check if dropping on the same slot (no-op)
       if (existingAssignment.day === day && existingAssignment.startTime === time) {
         return;
       }
 
-      // Check if target slot is occupied
       if (assignments.some(a => a.day === day && a.startTime === time && a.id !== data.assignmentId)) {
         alert("This slot is already occupied.");
         return;
       }
 
-      // Update assignment to new location
-      setAssignments(prev => prev.map(a => 
-        a.id === data.assignmentId 
+      setAssignments(prev => prev.map(a =>
+        a.id === data.assignmentId
           ? { ...a, day, startTime: time }
           : a
       ));
       return;
     }
 
-    // Handle new assignment (original logic)
     const { courseId, hourType, instructorId, labAssistantId } = data;
 
     if (!instructorId) {
@@ -288,7 +315,7 @@ export const useSchedule = () => {
     };
 
     setAssignments(prev => [...prev, newAssignment]);
-    
+
     setCourseOfferings(prev => {
       const updated = [...prev];
       const target = { ...updated[courseIndex] };
@@ -323,15 +350,14 @@ export const useSchedule = () => {
     });
   }, [assignments]);
 
-  const selectedSectionData = useMemo(() => 
+  const selectedSectionData = useMemo(() =>
     sections.find(s => s.id === selectedSection) || null
-  , [sections, selectedSection]);
+    , [sections, selectedSection]);
 
-  const sectionInstructors = useMemo(() => 
+  const sectionInstructors = useMemo(() =>
     instructors.filter(i => sectionStaffIds.includes(i.id))
-  , [instructors, sectionStaffIds]);
+    , [instructors, sectionStaffIds]);
 
-  // Available entry years depend on Program and Admission type selection
   const availableYears = useMemo(() => {
     if (!selectedProgramType || !selectedAdmissionType) return [];
     const filtered = batches.filter(b => b.program === selectedProgramType && b.admission_type === selectedAdmissionType);
@@ -340,27 +366,27 @@ export const useSchedule = () => {
   }, [batches, selectedProgramType, selectedAdmissionType]);
 
   const handleClearFilters = useCallback(() => {
+    setSelectedCampus("");
     setSelectedProgramType("");
     setSelectedAdmissionType("");
     setSelectedEntryYear("");
     setSelectedProgram("");
-    setSelectedYear("");
+    setSelectedAcademicYear("");
     setSelectedSection("");
-    setSelectedTerm("");
-    setSearchQuery(""); // NEW: Reset search query
+    setSearchQuery("");
     setCourseOfferings([]);
     setAssignments([]);
   }, []);
 
   return {
-    selectedProgramType, selectedAdmissionType, selectedEntryYear,
-    selectedProgram, selectedYear, selectedSection, selectedTerm, searchQuery,
+    selectedCampus, selectedProgramType, selectedAdmissionType, selectedEntryYear,
+    selectedProgram, selectedAcademicYear, selectedSection, searchQuery,
     showAssignmentPrompt, setShowAssignmentPrompt,
-    batches, academicPrograms, instructors, labAssistants, yearLevels, sections, courseOfferings, assignments,
+    campuses, batches, academicPrograms, instructors, labAssistants, academicYears, sections, courseOfferings, assignments,
     qualifiedInstructors, availableYears,
     isLoading, selectedSectionData, sectionInstructors,
-    handleProgramTypeChange, handleAdmissionTypeChange, handleEntryYearChange,
-    handleProgramChange, handleYearChange, handleSectionChange, handleTermChange, setSearchQuery,
+    handleCampusChange, handleProgramTypeChange, handleAdmissionTypeChange, handleEntryYearChange,
+    handleProgramChange, handleAcademicYearChange, handleSectionChange, setSearchQuery,
     handleDragStart, handleDrop, handleRemoveAssignment, handleUpdateInstructorAssignment,
     handleStaffInstructorToSection, handleClearFilters
   };

@@ -3,7 +3,7 @@ import {
   AcademicProgram, Section, CourseOffering, Room,
   HomebaseAssignment, AuthResponse, User, Batch, Instructor, LabAssistant,
   DraftSchedule, ScheduleShareRequest,
-  Assignment
+  Assignment, Campus
 } from '../types/index';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -61,10 +61,15 @@ const BATCHES: Batch[] = [
 ];
 
 const ACADEMIC_PROGRAMS: AcademicProgram[] = [
-  { id: 'prog-1', name: 'Software Engineering', code: 'SE' },
-  { id: 'prog-2', name: 'Computer Science', code: 'CS' },
-  { id: 'prog-3', name: 'Electrical Engineering', code: 'EE' },
-  { id: 'prog-4', name: 'Information Systems', code: 'IS' },
+  { id: 'prog-1', name: 'Software Engineering', code: 'SE', campusId: 'camp-1' },
+  { id: 'prog-2', name: 'Computer Science', code: 'CS', campusId: 'camp-1' },
+  { id: 'prog-3', name: 'Electrical Engineering', code: 'EE', campusId: 'camp-2' },
+  { id: 'prog-4', name: 'Information Systems', code: 'IS', campusId: 'camp-2' },
+];
+
+export const CAMPUSES: Campus[] = [
+  { id: 'camp-1', name: 'Main Campus' },
+  { id: 'camp-2', name: 'Technology Campus' },
 ];
 
 export const INSTRUCTORS: Instructor[] = [
@@ -96,9 +101,9 @@ export const LAB_ASSISTANTS: LabAssistant[] = [
 ];
 
 const SECTIONS: Section[] = [
-  { id: 'sec-1', name: 'Section 1', academicProgramId: 'prog-1', yearLevel: 1, studentCount: 45 },
-  { id: 'sec-2', name: 'Section 2', academicProgramId: 'prog-1', yearLevel: 1, studentCount: 42 },
-  { id: 'sec-3', name: 'Section 3', academicProgramId: 'prog-1', yearLevel: 2, studentCount: 38 },
+  { id: 'sec-1', name: 'Section 1', academicProgramId: 'prog-1', academicYear: 'year1semester1', studentCount: 45 },
+  { id: 'sec-2', name: 'Section 2', academicProgramId: 'prog-1', academicYear: 'year1semester1', studentCount: 42 },
+  { id: 'sec-3', name: 'Section 3', academicProgramId: 'prog-1', academicYear: 'year2semester1', studentCount: 38 },
 ];
 
 const ROOMS: Room[] = [
@@ -109,7 +114,7 @@ const ROOMS: Room[] = [
 ];
 
 const COURSE_OFFERINGS_BY_FILTER: Record<string, CourseOffering[]> = {
-  'b-2023-degree-regular-prog-1-1-1': [
+  'b-2023-degree-regular-prog-1-year1semester1': [
     {
       id: 'co-1', courseCode: 'SE101', courseTitle: 'Intro to SE', creditHours: 3,
       owningProgramId: 'prog-1', owningProgramCode: 'SE',  // Owned by SE
@@ -125,7 +130,7 @@ const COURSE_OFFERINGS_BY_FILTER: Record<string, CourseOffering[]> = {
       instructorId: '', instructorName: '', color: 'bg-emerald-500'
     },
   ],
-  'b-2022-degree-regular-prog-1-2-1': [
+  'b-2022-degree-regular-prog-1-year2semester1': [
     {
       id: 'co-4', courseCode: 'SE201', courseTitle: 'Data Structures', creditHours: 4,
       owningProgramId: 'prog-1', owningProgramCode: 'SE',  // Owned by SE
@@ -143,17 +148,42 @@ export const fetchBatches = async () => {
   return DEV_MOCKS ? MOCK_BATCH_RECORDS : BATCHES;
 };
 
-export const fetchAcademicPrograms = async () => { await delay(400); return ACADEMIC_PROGRAMS; };
+export const fetchCampuses = async () => { await delay(200); return CAMPUSES; };
+
+export const fetchAcademicPrograms = async (campusId?: string) => {
+  await delay(400);
+  if (campusId) {
+    return ACADEMIC_PROGRAMS.filter(p => p.campusId === campusId);
+  }
+  return ACADEMIC_PROGRAMS;
+};
+
 export const fetchInstructors = async () => { await delay(200); return INSTRUCTORS; };
 export const fetchLabAssistants = async () => { await delay(200); return LAB_ASSISTANTS; };
-export const fetchYearLevels = async (programId: string) => { await delay(200); return [1, 2, 3, 4, 5]; };
-export const fetchSections = async (programId: string, year: number) => {
-  await delay(300);
-  return SECTIONS.filter(s => s.academicProgramId === programId && s.yearLevel === year);
+export const fetchAcademicYears = async (programId: string) => {
+  await delay(200);
+  return [
+    { value: 'year1semester1', label: 'Year 1 Semester I' },
+    { value: 'year1semester2', label: 'Year 1 Semester II' },
+    { value: 'year2semester1', label: 'Year 2 Semester I' },
+    { value: 'year2semester2', label: 'Year 2 Semester II' },
+    { value: 'year3semester1', label: 'Year 3 Semester I' },
+    { value: 'year3semester2', label: 'Year 3 Semester II' },
+    { value: 'year4semester1', label: 'Year 4 Semester I' },
+    { value: 'year4semester2', label: 'Year 4 Semester II' },
+    { value: 'year5semester1', label: 'Year 5 Semester I' },
+    { value: 'year5semester2', label: 'Year 5 Semester II' },
+  ];
 };
-export const fetchCourseOfferings = async (batchId: string, programId: string, year: number, term: string) => {
+
+export const fetchSections = async (programId: string, academicYear: string) => {
+  await delay(300);
+  return SECTIONS.filter(s => s.academicProgramId === programId && s.academicYear === academicYear);
+};
+
+export const fetchCourseOfferings = async (batchId: string, programId: string, academicYear: string) => {
   await delay(400);
-  const key = `${batchId}-${programId}-${year}-${term}`;
+  const key = `${batchId}-${programId}-${academicYear}`;
   return COURSE_OFFERINGS_BY_FILTER[key] || [];
 };
 

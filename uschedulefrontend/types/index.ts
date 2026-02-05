@@ -14,6 +14,11 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface Campus {
+  id: string;
+  name: string;
+}
+
 export interface Batch {
   id: string;
   entry_year: number;
@@ -28,6 +33,7 @@ export interface AcademicProgram {
   id: string;
   name: string;
   code: string;
+  campusId: string;
 }
 
 export interface Instructor {
@@ -45,7 +51,7 @@ export interface Section {
   id: string;
   name: string;
   academicProgramId: string;
-  yearLevel: number;
+  academicYear: string; // e.g., "year1semester1"
   studentCount: number;
   assignedRoomId?: string | null;
   assignedRoomName?: string | null;

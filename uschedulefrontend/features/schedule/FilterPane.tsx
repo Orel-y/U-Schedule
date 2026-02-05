@@ -1,32 +1,33 @@
 
 import React, { useMemo } from 'react';
 import Select from '../../components/ui/Select';
-import { AcademicProgram, Section, Batch, CourseOffering, Instructor, LabAssistant } from '../../types/index';
+import { AcademicProgram, Section, Batch, CourseOffering, Instructor, LabAssistant, Campus } from '../../types/index';
 import CourseCard from './CourseCard';
 
 interface FilterPaneProps {
+  campuses: Campus[];
   batches: Batch[];
   academicPrograms: AcademicProgram[];
-  yearLevels: number[];
+  academicYears: { value: string; label: string }[];
   sections: Section[];
   availableYears: { value: string; label: string }[];
 
+  selectedCampus: string;
   selectedProgramType: string;
   selectedAdmissionType: string;
   selectedEntryYear: string;
   selectedProgram: string;
-  selectedYear: string;
+  selectedAcademicYear: string;
   selectedSection: string;
-  selectedTerm: string;
   searchQuery: string;
 
+  onCampusChange: (id: string) => void;
   onProgramTypeChange: (type: string) => void;
   onAdmissionTypeChange: (type: string) => void;
   onEntryYearChange: (year: string) => void;
   onProgramChange: (id: string) => void;
-  onYearChange: (year: string) => void;
+  onAcademicYearChange: (ay: string) => void;
   onSectionChange: (id: string) => void;
-  onTermChange: (term: string) => void;
   setSearchQuery: (query: string) => void;
   onClearFilters: () => void;
 
@@ -68,7 +69,15 @@ const FilterPane: React.FC<FilterPaneProps> = (props) => {
 
   return (
     <div className="relative space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-4 xl:grid-cols-8 gap-5 items-end bg-white p-7 rounded-[24px] border border-slate-200 shadow-[0_4px_15px_-5px_rgba(0,0,0,0.05)]">
+      <div className="grid grid-cols-1 md:grid-cols-4 xl:grid-cols-9 gap-4 items-end bg-white p-7 rounded-[24px] border border-slate-200 shadow-[0_4px_15px_-5px_rgba(0,0,0,0.05)]">
+        <Select
+          label="Campus"
+          value={props.selectedCampus}
+          options={props.campuses.map(c => ({ value: c.id, label: c.name }))}
+          onChange={props.onCampusChange}
+          placeholder="Select Campus"
+          loading={props.isLoading.campuses}
+        />
         <Select
           label="Program"
           value={props.selectedProgramType}
@@ -105,43 +114,38 @@ const FilterPane: React.FC<FilterPaneProps> = (props) => {
           value={props.selectedProgram}
           options={props.academicPrograms.map(p => ({ value: p.id, label: p.name }))}
           onChange={props.onProgramChange}
+          disabled={!props.selectedCampus}
           loading={props.isLoading.programs}
           placeholder="Select Program"
         />
         <Select
-          label="Year Level"
-          value={props.selectedYear}
-          options={props.yearLevels.map(y => ({ value: y, label: `Year ${y}` }))}
-          onChange={props.onYearChange}
+          label="Academic Year"
+          value={props.selectedAcademicYear}
+          options={props.academicYears}
+          onChange={props.onAcademicYearChange}
           disabled={!props.selectedProgram}
-          loading={props.isLoading.years}
-          placeholder="Year"
-        />
-        <Select
-          label="Semester"
-          value={props.selectedTerm}
-          options={[{ value: '1', label: 'Semester I' }, { value: '2', label: 'Semester II' }]}
-          onChange={props.onTermChange}
-          disabled={!props.selectedYear}
-          placeholder="Term"
+          loading={props.isLoading.academicYears}
+          placeholder="Year / Sem"
         />
         <Select
           label="Section"
           value={props.selectedSection}
           options={props.sections.map(s => ({ value: s.id, label: s.name }))}
           onChange={props.onSectionChange}
-          disabled={!props.selectedYear}
+          disabled={!props.selectedAcademicYear}
           loading={props.isLoading.sections}
           placeholder="Section"
         />
-        <button
-          onClick={props.onClearFilters}
-          aria-label="Clear all filters"
-          className="h-11 px-4 text-[13px] font-black text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-lg shadow-red-200/50 active:scale-[0.98] flex items-center justify-center gap-2 focus-visible:ring-4 focus-visible:ring-red-200"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-          Clear All
-        </button>
+        <div className="flex xl:col-span-2 gap-2">
+          <button
+            onClick={props.onClearFilters}
+            aria-label="Clear all filters"
+            className="flex-1 h-11 px-4 text-[13px] font-black text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-lg shadow-red-200/50 active:scale-[0.98] flex items-center justify-center gap-2 focus-visible:ring-4 focus-visible:ring-red-200"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            Clear All
+          </button>
+        </div>
       </div>
 
       {props.showPrompt && props.selectedSectionData && (

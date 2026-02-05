@@ -123,28 +123,29 @@ const App: React.FC = () => {
         {activeTab === 'schedule' ? (
           <>
             <FilterPane
+              campuses={schedule.campuses}
               batches={schedule.batches}
               academicPrograms={schedule.academicPrograms}
-              yearLevels={schedule.yearLevels}
+              academicYears={schedule.academicYears}
               sections={schedule.sections}
               availableYears={schedule.availableYears}
 
+              selectedCampus={schedule.selectedCampus}
               selectedProgramType={schedule.selectedProgramType}
               selectedAdmissionType={schedule.selectedAdmissionType}
               selectedEntryYear={schedule.selectedEntryYear}
               selectedProgram={schedule.selectedProgram}
-              selectedYear={schedule.selectedYear}
+              selectedAcademicYear={schedule.selectedAcademicYear}
               selectedSection={schedule.selectedSection}
-              selectedTerm={schedule.selectedTerm}
               searchQuery={schedule.searchQuery}
 
+              onCampusChange={schedule.handleCampusChange}
               onProgramTypeChange={schedule.handleProgramTypeChange}
               onAdmissionTypeChange={schedule.handleAdmissionTypeChange}
               onEntryYearChange={schedule.handleEntryYearChange}
               onProgramChange={schedule.handleProgramChange}
-              onYearChange={schedule.handleYearChange}
+              onAcademicYearChange={schedule.handleAcademicYearChange}
               onSectionChange={schedule.handleSectionChange}
-              onTermChange={schedule.handleTermChange}
               setSearchQuery={schedule.setSearchQuery}
               onClearFilters={schedule.handleClearFilters}
 
@@ -156,8 +157,8 @@ const App: React.FC = () => {
               courseOfferings={schedule.courseOfferings}
               instructors={schedule.instructors}
               sectionInstructors={schedule.sectionInstructors}
-              qualifiedInstructors={schedule.qualifiedInstructors}
               labAssistants={schedule.labAssistants}
+              qualifiedInstructors={schedule.qualifiedInstructors}
               onUpdateInstructor={schedule.handleUpdateInstructorAssignment}
               onDragStart={schedule.handleDragStart}
               userProgramId={auth.userProgramId}
@@ -176,7 +177,7 @@ const App: React.FC = () => {
                     onDragStart={schedule.handleDragStart}
                     onUpdateInstructor={schedule.handleUpdateInstructorAssignment}
                     onOpenAssignFlow={() => schedule.setShowAssignmentPrompt(true)}
-                    isTermSelected={!!schedule.selectedTerm && !!schedule.selectedEntryYear && !!schedule.selectedProgram && !!schedule.selectedYear}
+                    isTermSelected={!!schedule.selectedAcademicYear && !!schedule.selectedEntryYear && !!schedule.selectedProgram}
                     isHead={auth.isHead}
                     userProgramId={auth.userProgramId}
                     onShareWithPrograms={() => setShowShareDialog(true)}
