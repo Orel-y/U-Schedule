@@ -99,45 +99,6 @@ const ShareScheduleDialog: React.FC<ShareScheduleDialogProps> = ({
                         </div>
                     ) : (
                         <div className="space-y-6">
-                            {/* Optional: Suggested time for all shares */}
-                            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                                <h4 className="text-sm font-bold text-slate-700 mb-3">Suggested Schedule (Optional)</h4>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-500 mb-1">Day</label>
-                                        <select
-                                            value={requestedDay}
-                                            onChange={e => setRequestedDay(e.target.value)}
-                                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-brand/20 focus:border-brand"
-                                        >
-                                            <option value="">No preference</option>
-                                            <option value="Monday">Monday</option>
-                                            <option value="Tuesday">Tuesday</option>
-                                            <option value="Wednesday">Wednesday</option>
-                                            <option value="Thursday">Thursday</option>
-                                            <option value="Friday">Friday</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-500 mb-1">Time</label>
-                                        <select
-                                            value={requestedTime}
-                                            onChange={e => setRequestedTime(e.target.value)}
-                                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-brand/20 focus:border-brand"
-                                        >
-                                            <option value="">No preference</option>
-                                            <option value="08:00">08:00</option>
-                                            <option value="09:00">09:00</option>
-                                            <option value="10:00">10:00</option>
-                                            <option value="11:00">11:00</option>
-                                            <option value="13:00">13:00</option>
-                                            <option value="14:00">14:00</option>
-                                            <option value="15:00">15:00</option>
-                                            <option value="16:00">16:00</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
 
                             {/* Programs with their courses */}
                             {externalCoursesByProgram.map(group => (
