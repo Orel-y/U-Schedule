@@ -2,7 +2,8 @@
 import {
   AcademicProgram, Section, CourseOffering, Room,
   HomebaseAssignment, AuthResponse, User, Batch, Instructor, LabAssistant,
-  DraftSchedule, ScheduleShareRequest
+  DraftSchedule, ScheduleShareRequest,
+  Assignment
 } from '../types/index';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -210,7 +211,8 @@ export const createDraftSchedule = async (
   sectionId: string,
   createdBy: string,
   createdByProgramId: string,
-  courses: CourseOffering[]
+  courses: CourseOffering[],
+  assignments: Assignment[]
 ): Promise<DraftSchedule> => {
   await delay(300);
   const draft: DraftSchedule = {
@@ -222,7 +224,7 @@ export const createDraftSchedule = async (
     createdByProgramId,
     status: 'draft',
     courses,
-    assignments: [],
+    assignments,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -277,6 +279,8 @@ export const shareScheduleWithProgram = async (
     createdAt: new Date().toISOString(),
     requestedDay,
     requestedTime,
+    draftAssignments: draft.assignments,
+    allDraftCourses: draft.courses,
   };
 
   shareRequests.push(request);

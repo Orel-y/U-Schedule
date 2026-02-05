@@ -24,8 +24,15 @@ const ExternalScheduleView: React.FC<ExternalScheduleViewProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [localAssignments, setLocalAssignments] = useState<Assignment[]>([]);
 
-    // The courses from the request
-    const sharedCourses = request.courses || [];
+    // Unified assignments (sender's draft + local assignments)
+    const combinedAssignments = useMemo(() => {
+        return [...(request.draftAssignments || []), ...localAssignments];
+    }, [request.draftAssignments, localAssignments]);
+
+    // Unified course offerings (sender's courses + possibly local ones)
+    const combinedOfferings = useMemo(() => {
+        return request.allDraftCourses || request.courses || [];
+    }, [request.allDraftCourses, request.courses]);
 
     // Check if any course has scheduling data
     const hasSchedulingData = localAssignments.length > 0;
@@ -58,8 +65,10 @@ const ExternalScheduleView: React.FC<ExternalScheduleViewProps> = ({
                 id: `ext-assign-${Date.now()}`,
                 courseOfferingId: payload.courseId,
                 instructorId: selectedInstructorId,
+                sectionId: request.draftScheduleId, // Use draft ID as section reference
                 day,
                 startTime: time,
+                endTime: time, // Same for now, as we don't calculate duration here
                 hourType: payload.hourType,
                 labAssistantId: payload.labAssistantId
             };
@@ -102,13 +111,13 @@ const ExternalScheduleView: React.FC<ExternalScheduleViewProps> = ({
     };
 
     // Qualified instructor IDs map (all for shared course)
-    const qualifiedInstructors = useMemo(() => {
+    const qualifiedInstructorsByCourse = useMemo(() => {
         const map: Record<string, string[]> = {};
-        sharedCourses.forEach(course => {
+        combinedOfferings.forEach(course => {
             map[course.courseCode] = instructors.map(i => i.id);
         });
         return map;
-    }, [sharedCourses, instructors]);
+    }, [combinedOfferings, instructors]);
 
     if (isLoading) {
         return (
@@ -196,12 +205,12 @@ const ExternalScheduleView: React.FC<ExternalScheduleViewProps> = ({
 
                         {selectedInstructorId ? (
                             <div className="space-y-3">
-                                {sharedCourses.map(course => (
+                                {(request.courses || []).map(course => (
                                     <CourseCard
                                         key={course.id}
                                         course={{ ...course, instructorId: selectedInstructorId }}
                                         instructors={instructors}
-                                        qualifiedInstructorIds={qualifiedInstructors[course.courseCode] || []}
+                                        qualifiedInstructorIds={qualifiedInstructorsByCourse[course.courseCode] || []}
                                         labAssistants={[]}
                                         onDragStart={handleDragStart}
                                         onUpdateAssignment={() => { }}
@@ -223,8 +232,8 @@ const ExternalScheduleView: React.FC<ExternalScheduleViewProps> = ({
                         onClick={handleSubmit}
                         disabled={!selectedInstructorId || !hasSchedulingData || isSubmitting}
                         className={`w-full py-3 rounded-xl text-sm font-black transition-all ${selectedInstructorId && hasSchedulingData
-                                ? 'bg-brand text-white hover:bg-brand-600 shadow-lg shadow-brand/20'
-                                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                            ? 'bg-brand text-white hover:bg-brand-600 shadow-lg shadow-brand/20'
+                            : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                             }`}
                     >
                         {isSubmitting ? (
@@ -250,8 +259,8 @@ const ExternalScheduleView: React.FC<ExternalScheduleViewProps> = ({
                 {/* Right Panel - Timetable */}
                 <div>
                     <TimetableGrid
-                        assignments={localAssignments}
-                        courseOfferings={sharedCourses}
+                        assignments={combinedAssignments}
+                        courseOfferings={combinedOfferings}
                         onDrop={handleDrop}
                         onRemove={handleRemove}
                         onDragStart={handleDragStart}

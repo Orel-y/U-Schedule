@@ -14,6 +14,8 @@ interface ShareScheduleDialogProps {
     externalCoursesByProgram: ProgramCourseGroup[];
     onShare: (courseIds: string[], targetProgramId: string, day?: string, time?: string) => Promise<void>;
     isSharing: boolean;
+    sectionName?: string;
+    programName?: string;
 }
 
 const ShareScheduleDialog: React.FC<ShareScheduleDialogProps> = ({
@@ -21,7 +23,9 @@ const ShareScheduleDialog: React.FC<ShareScheduleDialogProps> = ({
     onClose,
     externalCoursesByProgram,
     onShare,
-    isSharing
+    isSharing,
+    sectionName,
+    programName
 }) => {
     const [selectedCourses, setSelectedCourses] = useState<Record<string, boolean>>({});
     const [requestedDay, setRequestedDay] = useState('');
@@ -66,8 +70,11 @@ const ShareScheduleDialog: React.FC<ShareScheduleDialogProps> = ({
                     <div className="flex items-center justify-between">
                         <div>
                             <h2 className="text-xl font-black text-white">Share with External Programs</h2>
-                            <p className="text-brand-100 text-sm mt-1">
-                                Request instructor assignment for courses owned by other programs
+                            <p className="text-brand-100 text-sm mt-1 font-bold">
+                                {programName && sectionName ? `Sharing schedule for ${programName} - ${sectionName}` : 'Request instructor assignment for courses owned by other programs'}
+                            </p>
+                            <p className="text-brand-100/70 text-[10px] uppercase font-bold tracking-widest mt-2">
+                                Your assigned slots will be shared as occupied to avoid conflicts
                             </p>
                         </div>
                         <button

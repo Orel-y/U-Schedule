@@ -148,6 +148,8 @@ export interface ScheduleShareRequest {
   requestedTime?: string;
   assignedInstructorId?: string;
   assignedInstructorName?: string;
+  draftAssignments?: Assignment[];
+  allDraftCourses?: CourseOffering[];
 }
 
 export interface UserProgramScope {

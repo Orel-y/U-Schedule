@@ -12,6 +12,7 @@ interface UseDraftScheduleProps {
     userId: string;
     userProgramId: string;
     courseOfferings: CourseOffering[];
+    assignments: Assignment[];
 }
 
 export const useDraftSchedule = ({
@@ -20,7 +21,8 @@ export const useDraftSchedule = ({
     sectionId,
     userId,
     userProgramId,
-    courseOfferings
+    courseOfferings,
+    assignments
 }: UseDraftScheduleProps) => {
     const [draft, setDraft] = useState<DraftSchedule | null>(null);
     const [pendingShares, setPendingShares] = useState<ScheduleShareRequest[]>([]);
@@ -97,7 +99,8 @@ export const useDraftSchedule = ({
                 sectionId,
                 userId,
                 userProgramId,
-                courseOfferings
+                courseOfferings,
+                assignments
             );
             setDraft(newDraft);
             return newDraft;
@@ -133,10 +136,15 @@ export const useDraftSchedule = ({
         requestedDay?: string,
         requestedTime?: string
     ) => {
+        const currentAssignments = assignments;
+
         if (!draft) {
             // Create draft first if it doesn't exist
             const newDraft = await createDraft();
             if (!newDraft) throw new Error('Failed to create draft');
+        } else {
+            // Update existing draft with current assignments before sharing
+            await saveDraft({ assignments: currentAssignments });
         }
 
         const draftId = draft?.id;

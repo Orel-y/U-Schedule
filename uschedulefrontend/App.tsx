@@ -26,6 +26,7 @@ const App: React.FC = () => {
     userId: auth.user?.id || '',
     userProgramId: auth.userProgramId || '',
     courseOfferings: schedule.courseOfferings,
+    assignments: schedule.assignments,
   });
 
   if (auth.isLoading) {
@@ -135,7 +136,6 @@ const App: React.FC = () => {
               onUpdateInstructor={schedule.handleUpdateInstructorAssignment}
               onDragStart={schedule.handleDragStart}
               userProgramId={auth.userProgramId}
-              onShareDraft={() => setShowShareDialog(true)}
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-10 items-start">
@@ -169,6 +169,7 @@ const App: React.FC = () => {
                   isHead={auth.isHead}
                   admissionType={schedule.selectedAdmissionType}
                   userProgramId={auth.userProgramId}
+                  onShareDraft={() => setShowShareDialog(true)}
                 />
               </div>
             </div>
@@ -201,6 +202,8 @@ const App: React.FC = () => {
         externalCoursesByProgram={draftSchedule.externalCoursesByProgram}
         onShare={draftSchedule.shareWithProgram}
         isSharing={draftSchedule.isSharing}
+        sectionName={schedule.selectedSectionData?.name}
+        programName={auth.userProgramCode}
       />
     </div>
   );

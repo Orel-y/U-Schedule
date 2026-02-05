@@ -13,6 +13,7 @@ interface TimetableGridProps {
   // Cross-program support
   userProgramId?: string;
   isExternalView?: boolean; // When viewing a shared draft as external owner
+  onShareDraft?: () => void;
 }
 
 // Toast notification component
@@ -44,7 +45,8 @@ const TimetableGrid: React.FC<TimetableGridProps> = ({
   isHead = false,
   admissionType = 'Regular',
   userProgramId,
-  isExternalView = false
+  isExternalView = false,
+  onShareDraft
 }) => {
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'info' } | null>(null);
 
@@ -158,6 +160,12 @@ const TimetableGrid: React.FC<TimetableGridProps> = ({
     : 'grid-cols-[100px_repeat(5,1fr)]';
 
   // Check if assignment is for an external course (for visual styling)
+  const hasExternalCourses = useMemo(() => {
+    if (!userProgramId) return false;
+    return courseOfferings.some(c => c.owningProgramId !== userProgramId);
+  }, [courseOfferings, userProgramId]);
+
+  // Check if assignment is for an external course (for visual styling)
   const isExternalAssignment = useCallback((assignment: Assignment): boolean => {
     if (!userProgramId) return false;
     const course = courseOfferings.find(c => c.id === assignment.courseOfferingId);
@@ -232,8 +240,8 @@ const TimetableGrid: React.FC<TimetableGridProps> = ({
                           draggable={isHead && !isExternal}
                           onDragStart={(e) => handleAssignmentDragStart(e, assignment)}
                           className={`h-full p-3 rounded-[18px] border shadow-[0_2px_10px_-4px_rgba(0,0,0,0.08)] flex flex-col justify-between transition-all ${isExternal
-                              ? 'bg-amber-50/50 border-amber-200 cursor-default'
-                              : 'bg-white border-slate-200'
+                            ? 'bg-amber-50/50 border-amber-200 cursor-default'
+                            : 'bg-white border-slate-200'
                             } ${isHead && !isExternal
                               ? 'cursor-grab active:cursor-grabbing group-hover:shadow-[0_4px_15px_-4px_rgba(2,136,209,0.2)] group-hover:border-brand-200 hover:scale-[1.02] hover:border-brand-300'
                               : ''
@@ -247,16 +255,16 @@ const TimetableGrid: React.FC<TimetableGridProps> = ({
                                 {/* Ownership badge */}
                                 {course.owningProgramCode && (
                                   <span className={`px-1 py-0.5 rounded text-[8px] font-black ${isExternal
-                                      ? 'bg-amber-100 text-amber-700'
-                                      : 'bg-brand-50 text-brand'
+                                    ? 'bg-amber-100 text-amber-700'
+                                    : 'bg-brand-50 text-brand'
                                     }`}>
                                     {course.owningProgramCode}
                                   </span>
                                 )}
                               </div>
                               <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-tight ${assignment.hourType === 'lecture' ? 'bg-brand-50 text-brand border border-brand-100' :
-                                  assignment.hourType === 'lab' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                                    assignment.hourType === 'tutorial' ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-slate-50 text-slate-600 border border-slate-100'
+                                assignment.hourType === 'lab' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
+                                  assignment.hourType === 'tutorial' ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-slate-50 text-slate-600 border border-slate-100'
                                 }`}>
                                 {assignment.hourType}
                               </span>
@@ -288,8 +296,8 @@ const TimetableGrid: React.FC<TimetableGridProps> = ({
                       ) : (
                         isHead && (
                           <div className={`h-full w-full border-2 border-dashed rounded-[18px] flex items-center justify-center transition-all ${isExternalView && !slotOccupied
-                              ? 'border-brand-200 opacity-100 bg-brand-50/30'
-                              : 'border-slate-200/50 opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100'
+                            ? 'border-brand-200 opacity-100 bg-brand-50/30'
+                            : 'border-slate-200/50 opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100'
                             }`}>
                             <span className={`text-[10px] font-black uppercase tracking-widest ${isExternalView ? 'text-brand' : 'text-slate-300'
                               }`}>
@@ -306,6 +314,34 @@ const TimetableGrid: React.FC<TimetableGridProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Share Draft Block - Moved to bottom and conditional */}
+      {isHead && !isExternalView && hasExternalCourses && onShareDraft && (
+        <div className="flex items-center justify-between px-8 py-6 bg-white border border-slate-200 rounded-[32px] shadow-sm animate-in slide-in-from-bottom-4 duration-500">
+          <div className="flex items-center gap-5">
+            <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 border border-amber-100 shadow-inner">
+              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-800 tracking-tight">Cross-Program Notification</h3>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">
+                Found external courses that need staffing. Share this draft to notify owners.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onShareDraft}
+            className="group px-10 py-4 bg-brand text-white rounded-2xl text-[14px] font-black transition-all hover:bg-brand-600 hover:shadow-2xl hover:shadow-brand/30 active:scale-95 flex items-center gap-3"
+          >
+            <span>Share Draft with Programs</span>
+            <svg className="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Toast notification */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

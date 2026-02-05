@@ -224,30 +224,7 @@ const FilterPane: React.FC<FilterPaneProps> = (props) => {
             )}
           </div>
 
-          <div className="mt-6 flex items-center justify-between border-t border-brand-100 pt-6">
-            <div className="flex items-center gap-4">
-              {/* Share Draft Button - Visible when external courses exist */}
-              {hasExternalCourses && props.onShareDraft && (
-                <button
-                  onClick={props.onShareDraft}
-                  disabled={!allOwnedCoursesStaffed}
-                  className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all active:scale-95 shadow-sm flex items-center gap-2 ${allOwnedCoursesStaffed
-                      ? 'bg-amber-500 text-white hover:bg-amber-600 shadow-amber-200/50'
-                      : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                    }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                  </svg>
-                  Share Draft with External Programs
-                </button>
-              )}
-              {hasExternalCourses && !allOwnedCoursesStaffed && (
-                <span className="text-xs text-slate-400 italic">
-                  Staff all your courses first before sharing
-                </span>
-              )}
-            </div>
+          <div className="flex items-center justify-end">
             <button
               onClick={props.onClosePrompt}
               className="px-6 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-500 hover:text-brand hover:border-brand-200 hover:bg-brand-50 transition-all active:scale-95 shadow-sm"
