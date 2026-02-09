@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ScheduleShareRequest, CourseOffering, Assignment, Instructor } from '../../types/index';
-import { fetchInstructorsByProgram } from '../../lib/api';
+import { fetchInstructorsByProgram, updateShareRequestDraftAssignments } from '../../lib/api';
 import TimetableGrid from './TimetableGrid';
 import CourseCard from './CourseCard';
 
@@ -57,7 +57,8 @@ const ExternalScheduleView: React.FC<ExternalScheduleViewProps> = ({
     }, [userProgramId]);
 
     // Handle dropping a course onto the timetable
-    const handleDrop = useCallback((day: string, time: string, payloadStr: string) => {
+    // Also pushes changes into shared storage (via API) for real-time propagation
+    const handleDrop = useCallback(async (day: string, time: string, payloadStr: string) => {
         try {
             const payload = JSON.parse(payloadStr);
 
@@ -91,11 +92,17 @@ const ExternalScheduleView: React.FC<ExternalScheduleViewProps> = ({
             }));
 
             // Add to local assignments
-            setLocalAssignments(prev => [...prev, newAssignment]);
+            setLocalAssignments(prev => {
+                const updated = [...prev, newAssignment];
+                // Push updated assignments to shared state so owners can see them in real time
+                updateShareRequestDraftAssignments(request.id, updated)
+                    .catch(err => console.error('Failed to sync external draft assignments:', err));
+                return updated;
+            });
         } catch (error) {
             console.error('Failed to parse drop payload:', error);
         }
-    }, [selectedInstructorId, selectedInstructor]);
+    }, [selectedInstructorId, selectedInstructor, request.id]);
 
     // Handle removing an assignment
     const handleRemove = useCallback((assignmentId: string) => {
@@ -112,8 +119,14 @@ const ExternalScheduleView: React.FC<ExternalScheduleViewProps> = ({
                 return c;
             }));
         }
-        setLocalAssignments(prev => prev.filter(a => a.id !== assignmentId));
-    }, [localAssignments]);
+        setLocalAssignments(prev => {
+            const updated = prev.filter(a => a.id !== assignmentId);
+            // Sync updated assignments to shared state as well
+            updateShareRequestDraftAssignments(request.id, updated)
+                .catch(err => console.error('Failed to sync external draft assignments on remove:', err));
+            return updated;
+        });
+    }, [localAssignments, request.id]);
 
     // Handle drag start for course cards
     const handleDragStart = useCallback((e: React.DragEvent, payload: any) => {

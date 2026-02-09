@@ -133,8 +133,6 @@ export const useDraftSchedule = ({
     const shareWithProgram = useCallback(async (
         courseIds: string[],
         targetProgramId: string,
-        requestedDay?: string,
-        requestedTime?: string
     ) => {
         const currentAssignments = assignments;
 
@@ -157,8 +155,6 @@ export const useDraftSchedule = ({
                 courseIds,
                 targetProgramId,
                 userProgramId,
-                requestedDay,
-                requestedTime
             );
 
             // Refresh outgoing requests
@@ -176,7 +172,7 @@ export const useDraftSchedule = ({
     // Merge local assignments with completed external assignments
     const mergedAssignments = useMemo(() => {
         const externalAssignments = outgoingShares
-            .filter(r => r.status === 'completed')
+            .filter(r => r.status === 'completed' || r.status === 'in_progress')
             .flatMap(r => r.draftAssignments || []);
 
         // Filter out any duplicates if they exist, prioritising local ones for now
@@ -228,6 +224,32 @@ export const useDraftSchedule = ({
         fetchPendingRequests();
         fetchOutgoingRequests();
     }, [fetchPendingRequests, fetchOutgoingRequests]);
+
+    // Listen for localStorage changes to cross-program state (multi-tab sync)
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const handleStorage = (event: StorageEvent) => {
+            if (event.key !== api.CROSS_PROGRAM_STORAGE_KEY) return;
+            // When cross-program state changes in another tab, refresh our view
+            fetchPendingRequests();
+            fetchOutgoingRequests();
+
+            // If we have an active draft, try to refresh it as well
+            if (draft?.id) {
+                api.fetchDraftScheduleById(draft.id)
+                    .then((fresh) => {
+                        if (fresh) setDraft(fresh);
+                    })
+                    .catch((err) => {
+                        console.error('Failed to refresh draft from storage:', err);
+                    });
+            }
+        };
+
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
+    }, [fetchPendingRequests, fetchOutgoingRequests, draft?.id]);
 
     return {
         // State

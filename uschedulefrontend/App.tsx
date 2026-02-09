@@ -20,7 +20,7 @@ const App: React.FC = () => {
 
   // Cross-program draft schedule management
   const draftSchedule = useDraftSchedule({
-    termId: schedule.selectedTerm,
+    termId: schedule.selectedAcademicYear + '-' + schedule.selectedEntryYear,
     batchId: schedule.selectedEntryYear ? `b-${schedule.selectedEntryYear}-${schedule.selectedProgramType?.toLowerCase()}-${schedule.selectedAdmissionType?.toLowerCase()}` : '',
     sectionId: schedule.selectedSection,
     userId: auth.user?.id || '',

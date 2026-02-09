@@ -231,9 +231,66 @@ export const resetClassAssignment = async () => { await delay(500); homebaseAssi
 // Cross-Program Scheduling API Functions
 // ============================================
 
-// In-memory store for draft schedules and share requests
+// --------------------------------------------
+// Cross-Program Scheduling Storage (Local)
+// --------------------------------------------
+
+// Shared storage key for cross-program state (for multi-tab/local testing)
+export const CROSS_PROGRAM_STORAGE_KEY = 'uschedule:crossProgramState';
+
+// In-memory mirrors for draft schedules and share requests
 let draftSchedules: DraftSchedule[] = [];
 let shareRequests: ScheduleShareRequest[] = [];
+
+interface CrossProgramState {
+  drafts: DraftSchedule[];
+  shares: ScheduleShareRequest[];
+}
+
+const loadCrossProgramStateFromStorage = (): CrossProgramState => {
+  // During SSR or tests, window/localStorage may not exist – fall back to in-memory only
+  if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+    return { drafts: draftSchedules, shares: shareRequests };
+  }
+
+  try {
+    const raw = window.localStorage.getItem(CROSS_PROGRAM_STORAGE_KEY);
+    if (!raw) {
+      return { drafts: draftSchedules, shares: shareRequests };
+    }
+    const parsed = JSON.parse(raw) as CrossProgramState;
+    return {
+      drafts: Array.isArray(parsed.drafts) ? parsed.drafts : [],
+      shares: Array.isArray(parsed.shares) ? parsed.shares : [],
+    };
+  } catch {
+    return { drafts: draftSchedules, shares: shareRequests };
+  }
+};
+
+const syncCrossProgramStateFromStorage = () => {
+  const { drafts, shares } = loadCrossProgramStateFromStorage();
+  draftSchedules = drafts;
+  shareRequests = shares;
+};
+
+const persistCrossProgramStateToStorage = () => {
+  if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+    // Environment without localStorage – keep only in memory
+    return;
+  }
+
+  const state: CrossProgramState = {
+    drafts: draftSchedules,
+    shares: shareRequests,
+  };
+
+  try {
+    window.localStorage.setItem(CROSS_PROGRAM_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Ignore storage quota errors in this dev/testing scenario
+  }
+};
 
 export const createDraftSchedule = async (
   termId: string,
@@ -245,6 +302,9 @@ export const createDraftSchedule = async (
   assignments: Assignment[]
 ): Promise<DraftSchedule> => {
   await delay(300);
+  // Ensure we start from latest shared state
+  syncCrossProgramStateFromStorage();
+
   const draft: DraftSchedule = {
     id: `draft-${Date.now()}`,
     termId,
@@ -259,14 +319,17 @@ export const createDraftSchedule = async (
     updatedAt: new Date().toISOString(),
   };
   draftSchedules.push(draft);
+  persistCrossProgramStateToStorage();
   return draft;
 };
 
 export const saveDraftSchedule = async (draft: DraftSchedule): Promise<DraftSchedule> => {
   await delay(200);
+  syncCrossProgramStateFromStorage();
   const index = draftSchedules.findIndex(d => d.id === draft.id);
   if (index !== -1) {
     draftSchedules[index] = { ...draft, updatedAt: new Date().toISOString() };
+    persistCrossProgramStateToStorage();
     return draftSchedules[index];
   }
   throw new Error('Draft not found');
@@ -274,6 +337,7 @@ export const saveDraftSchedule = async (draft: DraftSchedule): Promise<DraftSche
 
 export const fetchDraftScheduleById = async (draftId: string): Promise<DraftSchedule | null> => {
   await delay(200);
+  syncCrossProgramStateFromStorage();
   return draftSchedules.find(d => d.id === draftId) || null;
 };
 
@@ -286,6 +350,8 @@ export const shareScheduleWithProgram = async (
   requestedTime?: string
 ): Promise<ScheduleShareRequest> => {
   await delay(400);
+
+  syncCrossProgramStateFromStorage();
 
   const draft = draftSchedules.find(d => d.id === draftScheduleId);
   if (!draft) throw new Error('Draft not found');
@@ -318,24 +384,29 @@ export const shareScheduleWithProgram = async (
   // Update draft status
   draft.status = 'pending_external';
 
+  persistCrossProgramStateToStorage();
   return request;
 };
 
 export const fetchPendingShareRequests = async (programId: string): Promise<ScheduleShareRequest[]> => {
   await delay(300);
+  syncCrossProgramStateFromStorage();
   return shareRequests.filter(r => r.targetProgramId === programId && r.status !== 'completed');
 };
 
 export const fetchOutgoingShareRequests = async (programId: string): Promise<ScheduleShareRequest[]> => {
   await delay(300);
+  syncCrossProgramStateFromStorage();
   return shareRequests.filter(r => r.sourceProgramId === programId);
 };
 
 export const acceptShareRequest = async (requestId: string): Promise<ScheduleShareRequest> => {
   await delay(200);
+  syncCrossProgramStateFromStorage();
   const request = shareRequests.find(r => r.id === requestId);
   if (!request) throw new Error('Request not found');
   request.status = 'in_progress';
+  persistCrossProgramStateToStorage();
   return request;
 };
 
@@ -346,6 +417,7 @@ export const submitExternalAssignment = async (
   assignments?: Assignment[]
 ): Promise<ScheduleShareRequest> => {
   await delay(400);
+  syncCrossProgramStateFromStorage();
   const request = shareRequests.find(r => r.id === requestId);
   if (!request) throw new Error('Request not found');
 
@@ -376,6 +448,32 @@ export const submitExternalAssignment = async (
     }
   }
 
+  persistCrossProgramStateToStorage();
+  return request;
+};
+
+// Update only the working draft assignments for a given share request.
+// This is used to push in-progress scheduling changes in real-time.
+export const updateShareRequestDraftAssignments = async (
+  requestId: string,
+  assignments: Assignment[]
+): Promise<ScheduleShareRequest> => {
+  await delay(150);
+  syncCrossProgramStateFromStorage();
+  const request = shareRequests.find(r => r.id === requestId);
+  if (!request) throw new Error('Request not found');
+
+  request.draftAssignments = assignments;
+  // Keep status as-is (pending/in_progress/completed)
+
+  // Also mirror into the owning draft if available so owners see changes
+  const draft = draftSchedules.find(d => d.id === request.draftScheduleId);
+  if (draft) {
+    draft.assignments = assignments;
+    draft.updatedAt = new Date().toISOString();
+  }
+
+  persistCrossProgramStateToStorage();
   return request;
 };
 
