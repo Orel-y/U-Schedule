@@ -308,6 +308,7 @@ export const useSchedule = () => {
       courseOfferingId: courseId,
       hourType,
       instructorId,
+      instructorName: course.instructorName, // Capture name for cross-program visibility
       labAssistantId,
       day,
       startTime: time,

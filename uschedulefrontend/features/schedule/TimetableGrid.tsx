@@ -273,9 +273,15 @@ const TimetableGrid: React.FC<TimetableGridProps> = ({
                           </div>
                           <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-50">
                             <div className="flex flex-col min-w-0">
-                              <span className="text-[10px] font-bold text-slate-400 truncate">{assignment.instructorId.startsWith('t-') ? course.instructorName : assignment.instructorId}</span>
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-0.5">Instructor</span>
+                              <span className="text-[11px] font-bold text-slate-700 truncate">
+                                {assignment.instructorName ||
+                                  (assignment.instructorId.startsWith('t-')
+                                    ? (course.instructorName || assignment.instructorId)
+                                    : assignment.instructorId)}
+                              </span>
                               {assignment.hourType === 'lab' && assignment.labAssistantId && (
-                                <span className="text-[9px] font-medium text-emerald-500 truncate">Asst: {assignment.labAssistantId}</span>
+                                <span className="text-[9px] font-medium text-emerald-500 truncate mt-0.5">Asst: {assignment.labAssistantId}</span>
                               )}
                             </div>
                             {isHead && !isExternal && (

@@ -306,7 +306,7 @@ export const createDraftSchedule = async (
   syncCrossProgramStateFromStorage();
 
   const draft: DraftSchedule = {
-    id: `draft-${Date.now()}`,
+    id: `draft-${sectionId}-${Date.now()}`,
     termId,
     batchId,
     sectionId,
@@ -339,6 +339,12 @@ export const fetchDraftScheduleById = async (draftId: string): Promise<DraftSche
   await delay(200);
   syncCrossProgramStateFromStorage();
   return draftSchedules.find(d => d.id === draftId) || null;
+};
+
+export const fetchDraftScheduleBySection = async (sectionId: string, termId: string): Promise<DraftSchedule | null> => {
+  await delay(200);
+  syncCrossProgramStateFromStorage();
+  return draftSchedules.find(d => d.sectionId === sectionId && d.termId === termId) || null;
 };
 
 export const shareScheduleWithProgram = async (

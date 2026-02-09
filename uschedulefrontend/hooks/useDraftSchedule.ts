@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import * as api from '../lib/api';
 import {
     CourseOffering, Assignment, DraftSchedule, ScheduleShareRequest, Instructor
@@ -29,6 +29,99 @@ export const useDraftSchedule = ({
     const [outgoingShares, setOutgoingShares] = useState<ScheduleShareRequest[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [isSharing, setIsSharing] = useState(false);
+    const [lastNotification, setLastNotification] = useState<{ message: string; type: 'info' | 'success' } | null>(null);
+
+    // Refs to track previous states for change detection
+    const prevPendingAssignmentsRef = useRef<Record<string, string>>({});
+    const prevOutgoingAssignmentsRef = useRef<Record<string, string>>({});
+
+    // Notify when pending shares (incoming) are updated by sender
+    useEffect(() => {
+        pendingShares.forEach(req => {
+            const currentAssignments = JSON.stringify(req.draftAssignments || []);
+            const prevAssignments = prevPendingAssignmentsRef.current[req.id];
+
+            if (prevAssignments && prevAssignments !== currentAssignments) {
+                setLastNotification({
+                    message: `Sender (${req.sourceProgramName}) has updated the schedule draft.`,
+                    type: 'info'
+                });
+            }
+            prevPendingAssignmentsRef.current[req.id] = currentAssignments;
+        });
+    }, [pendingShares]);
+
+    // Notify when outgoing shares (others assigned to you) are updated by receiver
+    useEffect(() => {
+        outgoingShares.forEach(req => {
+            const currentAssignments = JSON.stringify(req.draftAssignments || []);
+            const prevAssignments = prevOutgoingAssignmentsRef.current[req.id];
+
+            if (prevAssignments && prevAssignments !== currentAssignments) {
+                setLastNotification({
+                    message: `${req.targetProgramName} updated assignments for your request.`,
+                    type: 'success'
+                });
+            }
+            prevOutgoingAssignmentsRef.current[req.id] = currentAssignments;
+        });
+    }, [outgoingShares]);
+
+    // Load draft for current section on mount or when section/term changes
+    useEffect(() => {
+        const loadDraft = async () => {
+            if (!sectionId || !termId) {
+                setDraft(null);
+                return;
+            }
+            try {
+                const existing = await api.fetchDraftScheduleBySection(sectionId, termId);
+                setDraft(existing);
+                if (existing) {
+                    // Initial load - don't notify
+                    prevOutgoingAssignmentsRef.current[existing.id] = JSON.stringify(existing.assignments);
+                }
+            } catch (error) {
+                console.error('Failed to load draft for section:', error);
+            }
+        };
+        loadDraft();
+    }, [sectionId, termId]);
+
+    // Background sync assignments whenever they change (REAL-TIME SENDER SYNC)
+    useEffect(() => {
+        if (!draft || isSaving) return;
+
+        // Only sync if assignments actually differ to avoid infinite loops
+        const assignmentsChanged = JSON.stringify(assignments) !== JSON.stringify(draft.assignments);
+
+        if (assignmentsChanged) {
+            const timeoutId = setTimeout(async () => {
+                setIsSaving(true);
+                try {
+                    const updatedDraft = {
+                        ...draft,
+                        assignments,
+                        updatedAt: new Date().toISOString()
+                    };
+                    const updated = await api.saveDraftSchedule(updatedDraft);
+                    setDraft(updated);
+
+                    // Also update any active share requests so receivers see changes in real-time
+                    const relatedShares = outgoingShares.filter(s => s.draftScheduleId === draft.id);
+                    for (const share of relatedShares) {
+                        await api.updateShareRequestDraftAssignments(share.id, assignments);
+                    }
+                } catch (err) {
+                    console.error('Background sync failed:', err);
+                } finally {
+                    setIsSaving(false);
+                }
+            }, 500); // Small debounce
+
+            return () => clearTimeout(timeoutId);
+        }
+    }, [assignments, draft, isSaving, outgoingShares]);
 
     // Derived: courses owned by current user's program
     const ownedCourses = useMemo(() =>
@@ -265,6 +358,9 @@ export const useDraftSchedule = ({
         externalCoursesByProgram,
         hasExternalCourses: externalCourses.length > 0,
         mergedAssignments,
+
+        lastNotification,
+        clearLastNotification: () => setLastNotification(null),
 
         // Actions
         canEditCourse,

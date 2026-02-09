@@ -62,11 +62,40 @@ const ExternalScheduleView: React.FC<ExternalScheduleViewProps> = ({
         try {
             const payload = JSON.parse(payloadStr);
 
+            // Handle moving existing assignment
+            if (payload.isMove && payload.assignmentId) {
+                const existingAssignment = localAssignments.find(a => a.id === payload.assignmentId);
+                if (!existingAssignment) return;
+
+                if (existingAssignment.day === day && existingAssignment.startTime === time) {
+                    return;
+                }
+
+                // Check for collisions in local assignments
+                if (localAssignments.some(a => a.day === day && a.startTime === time && a.id !== payload.assignmentId)) {
+                    alert("This slot is already occupied.");
+                    return;
+                }
+
+                setLocalAssignments(prev => {
+                    const updated = prev.map(a =>
+                        a.id === payload.assignmentId
+                            ? { ...a, day, startTime: time }
+                            : a
+                    );
+                    updateShareRequestDraftAssignments(request.id, updated)
+                        .catch(err => console.error('Failed to sync external draft assignments:', err));
+                    return updated;
+                });
+                return;
+            }
+
             // Create new assignment
             const newAssignment: Assignment = {
                 id: `ext-assign-${Date.now()}`,
                 courseOfferingId: payload.courseId,
                 instructorId: selectedInstructorId,
+                instructorName: selectedInstructor?.name, // Capture name for visibility
                 sectionId: request.draftScheduleId,
                 day,
                 startTime: time,
@@ -102,7 +131,7 @@ const ExternalScheduleView: React.FC<ExternalScheduleViewProps> = ({
         } catch (error) {
             console.error('Failed to parse drop payload:', error);
         }
-    }, [selectedInstructorId, selectedInstructor, request.id]);
+    }, [selectedInstructorId, selectedInstructor, request.id, localAssignments, request.draftScheduleId]);
 
     // Handle removing an assignment
     const handleRemove = useCallback((assignmentId: string) => {
@@ -192,26 +221,38 @@ const ExternalScheduleView: React.FC<ExternalScheduleViewProps> = ({
             </div>
 
             {/* Info Panel */}
-            <div className="bg-brand-50 border border-brand-100 rounded-2xl p-6">
-                <h2 className="text-lg font-black text-slate-800">
-                    Assign Instructor & Schedule Course
-                </h2>
-                <p className="text-sm text-slate-600 mt-1">
-                    The {request.sourceProgramName} program has requested instructor assignment for their schedule.
-                    Staff your course and schedule it in an available time slot.
-                </p>
+            <div className="bg-brand border border-white/10 rounded-[32px] p-8 shadow-xl shadow-brand/20 relative overflow-hidden group">
+                {/* Decorative background element */}
+                <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-colors duration-700" />
 
-                {/* Suggested time if provided */}
-                {(request.requestedDay || request.requestedTime) && (
-                    <div className="mt-3 flex items-center gap-2 text-sm">
-                        <svg className="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span className="font-medium text-slate-700">
-                            Suggested: {request.requestedDay} at {request.requestedTime}
-                        </span>
+                <div className="relative z-10">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/20">
+                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </div>
+                        <h2 className="text-2xl font-black text-white tracking-tight">
+                            Staffing Request
+                        </h2>
                     </div>
-                )}
+                    <p className="text-brand-100/80 text-sm font-medium leading-relaxed max-w-2xl">
+                        The <span className="text-white font-bold">{request.sourceProgramName}</span> program has requested an instructor for their schedule.
+                        Select a qualified staff member and drag the course to an available slot.
+                    </p>
+
+                    {/* Suggested time if provided */}
+                    {(request.requestedDay || request.requestedTime) && (
+                        <div className="mt-6 inline-flex items-center gap-2.5 px-4 py-2 bg-white/10 rounded-xl border border-white/10 backdrop-blur-md">
+                            <svg className="w-4 h-4 text-brand-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-[12px] font-black text-white uppercase tracking-wider">
+                                Recommended: {request.requestedDay} at {request.requestedTime}
+                            </span>
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-8">

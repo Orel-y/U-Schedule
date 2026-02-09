@@ -32,27 +32,16 @@ const App: React.FC = () => {
   const [lastCompletedShares, setLastCompletedShares] = useState<string[]>([]);
   const [sessionToast, setSessionToast] = useState<{ message: string; type: 'info' | 'error' | 'success' } | null>(null);
 
-  // Poll for outgoing request completions and notify
+  // Handle real-time notifications from cross-program interactions
   useEffect(() => {
-    const completed = draftSchedule.outgoingShares
-      .filter(r => r.status === 'completed')
-      .map(r => r.id);
-
-    const newlyCompleted = completed.filter(id => !lastCompletedShares.includes(id));
-
-    if (newlyCompleted.length > 0) {
-      newlyCompleted.forEach(id => {
-        const req = draftSchedule.outgoingShares.find(r => r.id === id);
-        if (req) {
-          setSessionToast({
-            message: `${req.targetProgramName} has completed your instructor request!`,
-            type: 'success'
-          });
-        }
+    if (draftSchedule.lastNotification) {
+      setSessionToast({
+        message: draftSchedule.lastNotification.message,
+        type: draftSchedule.lastNotification.type === 'success' ? 'success' : 'info'
       });
-      setLastCompletedShares(completed);
+      draftSchedule.clearLastNotification();
     }
-  }, [draftSchedule.outgoingShares, lastCompletedShares]);
+  }, [draftSchedule.lastNotification, draftSchedule.clearLastNotification]);
 
   if (auth.isLoading) {
     return (

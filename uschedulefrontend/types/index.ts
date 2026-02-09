@@ -104,6 +104,7 @@ export interface Assignment {
   courseOfferingId: string;
   hourType: HourType;
   instructorId: string;
+  instructorName?: string; // Cache name for cross-program visibility
   labAssistantId?: string;
   day: string;
   startTime: string;

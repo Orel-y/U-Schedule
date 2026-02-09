@@ -23,7 +23,10 @@ const PendingSharesPanel: React.FC<PendingSharesPanelProps> = ({
     const [programInstructors, setProgramInstructors] = useState<Instructor[]>([]);
     const [selectedInstructor, setSelectedInstructor] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
-    const [scheduleViewRequest, setScheduleViewRequest] = useState<ScheduleShareRequest | null>(null);
+    const [scheduleViewRequestId, setScheduleViewRequestId] = useState<string | null>(null);
+
+    // Get the current version of the request being viewed
+    const scheduleViewRequest = pendingRequests.find(r => r.id === scheduleViewRequestId);
 
     // Fetch instructors for this program
     useEffect(() => {
@@ -44,7 +47,7 @@ const PendingSharesPanel: React.FC<PendingSharesPanelProps> = ({
     };
 
     const handleOpenScheduleView = (request: ScheduleShareRequest) => {
-        setScheduleViewRequest(request);
+        setScheduleViewRequestId(request.id);
     };
 
     const handleSubmit = async (request: ScheduleShareRequest) => {
@@ -77,7 +80,7 @@ const PendingSharesPanel: React.FC<PendingSharesPanelProps> = ({
     ) => {
         try {
             await onSubmitAssignment(requestId, instructorId, instructorName, assignments);
-            setScheduleViewRequest(null);
+            setScheduleViewRequestId(null);
             onRefresh();
         } catch (error) {
             alert('Failed to submit assignment');
@@ -91,7 +94,7 @@ const PendingSharesPanel: React.FC<PendingSharesPanelProps> = ({
                 request={scheduleViewRequest}
                 userProgramId={userProgramId}
                 onSubmitAssignment={handleScheduleViewSubmit}
-                onBack={() => setScheduleViewRequest(null)}
+                onBack={() => setScheduleViewRequestId(null)}
             />
         );
     }
